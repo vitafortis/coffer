@@ -73,7 +73,8 @@ input[type=checkbox] { accent-color: var(--primary); }
 .icon { display: inline-grid; place-items: center; border: 0; background: none; color: var(--muted-foreground); cursor: pointer; font-size: 14px; width: 26px; height: 26px; border-radius: 6px; }
 .icon:hover { background: var(--accent); color: var(--foreground); }
 .link { border: 0; background: none; color: var(--muted-foreground); cursor: pointer; font: inherit; font-size: 11px; }
-.link:hover { color: var(--danger); }
+.link:hover { color: var(--foreground); text-decoration: underline; }
+.link.danger:hover { color: var(--danger); }
 .bar { display: flex; align-items: center; gap: 8px; margin: -12px -12px 10px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .tabs { display: flex; gap: 2px; flex: 1; }
 .tabs button { border: 0; background: none; color: var(--muted-foreground); font: inherit; font-weight: 500; padding: 5px 10px; border-radius: 7px; cursor: pointer; }

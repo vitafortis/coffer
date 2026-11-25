@@ -18,10 +18,13 @@ const cfg = await getConfig();
 if (cfg.url && cfg.token) showMain();
 else showConnect();
 
-function showConnect(error = '') {
+/** The connect screen: first run, a dead token, or switching to another server. */
+function showConnect(error = '', { switching = false } = {}) {
 	$('main').hidden = true;
 	$('connect').hidden = false;
+	$('c-cancel').hidden = !switching;
 	$('c-url').value = cfg.url || '';
+	$('c-token').value = '';
 	$('c-error').textContent = error;
 	($('c-url').value ? $('c-token') : $('c-url')).focus();
 }
@@ -31,13 +34,16 @@ $('connect-form').addEventListener('submit', async (e) => {
 	$('c-error').textContent = '';
 	let url;
 	try {
-		url = new URL($('c-url').value.trim()).origin;
+		// Any address: a host, a port, or a path if Coffer sits under one (https://example.com/coffer).
+		const u = new URL($('c-url').value.trim());
+		if (!/^https?:$/.test(u.protocol)) throw new Error();
+		url = u.origin + u.pathname.replace(/\/+$/, '');
 	} catch {
 		$('c-error').textContent = 'Enter the address you open Coffer at';
 		return;
 	}
 	// Ask for access to just this one site.
-	const granted = await chrome.permissions.request({ origins: [`${url}/*`] });
+	const granted = await chrome.permissions.request({ origins: [`${new URL(url).origin}/*`] });
 	if (!granted) {
 		$('c-error').textContent = 'Coffer needs permission to talk to that address';
 		return;
@@ -47,7 +53,11 @@ $('connect-form').addEventListener('submit', async (e) => {
 		const res = await fetch(`${url}/api/v1/me`, { headers: { authorization: `Bearer ${token}` } });
 		const me = await res.json().catch(() => ({}));
 		if (!res.ok) throw new Error(me.message ?? `${res.status} ${res.statusText}`);
+		// Switching servers: let go of the old one's site access.
+		const old = cfg.url && new URL(cfg.url).origin;
+		if (old && old !== new URL(url).origin) await chrome.permissions.remove({ origins: [`${old}/*`] }).catch(() => {});
 		await chrome.storage.local.set({ url, token, email: me.email });
+		await chrome.storage.local.remove('lastSave');
 		Object.assign(cfg, { url, token, email: me.email });
 		$('c-token').value = '';
 		showMain();
@@ -66,6 +76,11 @@ async function showMain() {
 	$('q').focus();
 	search('');
 }
+
+$('who').addEventListener('click', () => showConnect('', { switching: true }));
+$('c-cancel').addEventListener('click', () => {
+	if (cfg.url && cfg.token) showMain();
+});
 
 $('disconnect').addEventListener('click', async () => {
 	await chrome.storage.local.remove(['token', 'email']);

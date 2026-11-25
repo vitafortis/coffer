@@ -8,11 +8,14 @@
 		<!-- Connect: server address and an API token -->
 		<section id="connect" hidden>
 			<header class="brand"><img src="icons/icon32.png" alt="" width="24" height="24" /><b>Coffer</b></header>
-			<p class="muted">Connect to your Coffer with an API token (Coffer → Settings → API tokens).</p>
+			<p class="muted">Connect to any Coffer server with an API token from it (Coffer → Settings → API tokens).</p>
 			<form id="connect-form">
 				<label>Server<input id="c-url" type="url" placeholder="https://coffer.example.com" required /></label>
 				<label>API token<input id="c-token" type="password" placeholder="cof_…" autocomplete="off" required /></label>
-				<button class="btn primary" type="submit">Connect</button>
+				<div class="actions">
+					<button id="c-cancel" class="btn ghost" type="button" hidden>Cancel</button>
+					<button class="btn primary" type="submit">Connect</button>
+				</div>
 				<p id="c-error" class="error"></p>
 			</form>
 		</section>
@@ -79,8 +82,8 @@
 			</form>
 
 			<footer class="foot">
-				<span id="who" class="muted"></span>
-				<button id="disconnect" class="link">Disconnect</button>
+				<button id="who" class="link" title="Connect to a different Coffer"></button>
+				<button id="disconnect" class="link danger">Disconnect</button>
 			</footer>
 		</section>
 		<div id="toast" class="toast" hidden></div>
