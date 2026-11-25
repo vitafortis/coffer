@@ -1,0 +1,33 @@
+# Coffer — secrets for your projects, with generators and one-time links.
+#
+#   docker compose up -d
+#   open http://<this-host>:3070 and create the admin account
+#
+# People, tokens and settings are set up in the web UI.
+services:
+  coffer:
+    image: ghcr.io/vitafortis/coffer:latest
+    # Or build from this checkout:
+    # build: .
+    container_name: coffer
+    restart: unless-stopped
+    ports:
+      - "3070:3000"
+    # All optional.
+    # environment:
+      # Create the admin here instead of in the setup screen.
+      # COFFER_ADMIN_EMAIL: you@example.com
+      # COFFER_ADMIN_PASSWORD: ${COFFER_ADMIN_PASSWORD}
+      # Manage the encryption key yourself. Otherwise a random key is generated at
+      # /data/secret.key. Either way: back the key up SEPARATELY from the database.
+      # Lose it and every secret is gone; leak it with a backup and they're all readable.
+      # COFFER_SECRET_KEY: ${COFFER_SECRET_KEY}
+      # Behind a reverse proxy that terminates TLS (so links and cookies use https).
+      # PROTOCOL_HEADER: x-forwarded-proto
+      # HOST_HEADER: x-forwarded-host
+    volumes:
+      # The database (encrypted secrets, people, tokens, links) and the key file.
+      - coffer-data:/data
+
+volumes:
+  coffer-data:

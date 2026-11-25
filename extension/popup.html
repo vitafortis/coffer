@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="stylesheet" href="popup.css" />
+	</head>
+	<body>
+		<!-- Connect: server address and an API token -->
+		<section id="connect" hidden>
+			<header class="brand"><img src="icons/icon32.png" alt="" width="24" height="24" /><b>Coffer</b></header>
+			<p class="muted">Connect to your Coffer with an API token (Coffer → Settings → API tokens).</p>
+			<form id="connect-form">
+				<label>Server<input id="c-url" type="url" placeholder="https://coffer.example.com" required /></label>
+				<label>API token<input id="c-token" type="password" placeholder="cof_…" autocomplete="off" required /></label>
+				<button class="btn primary" type="submit">Connect</button>
+				<p id="c-error" class="error"></p>
+			</form>
+		</section>
+
+		<!-- Main -->
+		<section id="main" hidden>
+			<header class="bar">
+				<img src="icons/icon32.png" alt="" width="20" height="20" />
+				<nav class="tabs">
+					<button data-tab="search" class="active">Secrets</button>
+					<button data-tab="generate">Generate</button>
+				</nav>
+				<button id="open-web" class="icon" title="Open Coffer">↗</button>
+			</header>
+
+			<div id="tab-search">
+				<div id="last" class="last" hidden>
+					<span>New password for <b id="last-host"></b><span id="last-filled"></span></span>
+					<button id="last-save" class="btn sm">Save…</button>
+					<button id="last-dismiss" class="icon" title="Dismiss">×</button>
+				</div>
+				<input id="q" class="search" type="search" placeholder="Find a secret…" autocomplete="off" spellcheck="false" />
+				<ul id="results" class="results"></ul>
+				<p id="s-empty" class="muted center" hidden></p>
+			</div>
+
+			<div id="tab-generate" hidden>
+				<div class="gen-value"><code id="g-value"></code></div>
+				<div class="row">
+					<label class="grow">Length <b id="g-len-label">24</b> <span class="muted" id="g-bits"></span>
+						<input id="g-length" type="range" min="8" max="96" value="24" /></label>
+				</div>
+				<div class="checks">
+					<label><input type="checkbox" id="g-lower" checked /> a–z</label>
+					<label><input type="checkbox" id="g-upper" checked /> A–Z</label>
+					<label><input type="checkbox" id="g-digits" checked /> 0–9</label>
+					<label><input type="checkbox" id="g-symbols" checked /> !#$%</label>
+					<label class="wide"><input type="checkbox" id="g-unambiguous" /> Avoid look-alikes</label>
+				</div>
+				<div class="actions">
+					<button id="g-again" class="btn">↻ New</button>
+					<button id="g-copy" class="btn">Copy</button>
+					<button id="g-fill" class="btn primary">Fill in page</button>
+				</div>
+				<button id="g-save" class="btn ghost full">Save to a project…</button>
+				<p class="muted small">Tip: right-click any password field → <i>Fill with a new password</i>.</p>
+			</div>
+
+			<!-- Save a value to a project -->
+			<form id="save" class="save" hidden>
+				<h3>Save to a project</h3>
+				<label>Name<input id="sv-key" placeholder="EXAMPLE_COM_PASSWORD" required spellcheck="false" /></label>
+				<div class="row">
+					<label class="grow">Project<select id="sv-project"></select></label>
+					<label class="grow">Environment<select id="sv-env"></select></label>
+				</div>
+				<label>Folder<input id="sv-path" value="/" spellcheck="false" /></label>
+				<label>Note<input id="sv-note" placeholder="Optional" /></label>
+				<div class="actions">
+					<button type="button" id="sv-cancel" class="btn ghost">Cancel</button>
+					<button type="submit" class="btn primary">Save</button>
+				</div>
+				<p id="sv-error" class="error"></p>
+			</form>
+
+			<footer class="foot">
+				<span id="who" class="muted"></span>
+				<button id="disconnect" class="link">Disconnect</button>
+			</footer>
+		</section>
+		<div id="toast" class="toast" hidden></div>
+		<script type="module" src="popup.js"></script>
+	</body>
+</html>
