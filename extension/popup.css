@@ -52,11 +52,12 @@ section { padding: 12px; }
 .center { text-align: center; }
 .error { color: var(--danger); font-size: 12px; min-height: 1em; margin: 6px 0 0; }
 label { display: block; font-size: 11px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 8px; }
-input:not([type=checkbox]):not([type=range]), select {
+input:not([type=checkbox]):not([type=range]), select, textarea {
 	display: block; width: 100%; height: 32px; margin-top: 4px; padding: 0 10px;
 	border: 1px solid var(--input); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: 13px; outline: none;
 }
-input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 20%, transparent); }
+textarea { height: auto; min-height: 32px; padding: 6px 10px; resize: vertical; font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 12px; }
+input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 20%, transparent); }
 input[type=range] { width: 100%; accent-color: var(--primary); }
 input[type=checkbox] { accent-color: var(--primary); }
 .btn {
@@ -101,8 +102,14 @@ input[type=checkbox] { accent-color: var(--primary); }
 .checks .wide { grid-column: span 2; }
 .actions { display: flex; gap: 6px; justify-content: flex-end; margin-bottom: 8px; }
 .actions .btn { flex: 1; }
-.save { position: fixed; inset: 0; background: var(--background); padding: 14px; z-index: 5; }
+.save { position: fixed; inset: 0; background: var(--background); padding: 14px; z-index: 5; overflow-y: auto; }
 .save h3 { margin: 0 0 10px; font-size: 14px; }
+.crumb { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.crumb b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.chips button { border: 1px solid var(--border); background: none; color: var(--muted-foreground); font: inherit; font-size: 11.5px; padding: 2px 9px; border-radius: 999px; cursor: pointer; }
+.chips button.active { border-color: color-mix(in oklch, var(--primary) 45%, transparent); background: color-mix(in oklch, var(--primary) 12%, transparent); color: var(--primary-ink); }
+.results .n { font-size: 11px; color: var(--muted-foreground); }
 .foot { display: flex; justify-content: space-between; align-items: center; margin: 10px -12px -12px; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 11px; }
 .toast { position: fixed; left: 12px; right: 12px; bottom: 12px; padding: 8px 10px; border-radius: 8px; background: var(--card); border: 1px solid var(--border); box-shadow: 0 8px 24px oklch(0% 0 0 / 0.25); font-size: 12px; z-index: 10; }
 .toast.error { color: var(--danger); }

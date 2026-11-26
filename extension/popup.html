@@ -26,8 +26,10 @@
 				<img src="icons/icon32.png" alt="" width="20" height="20" />
 				<nav class="tabs">
 					<button data-tab="search" class="active">Secrets</button>
+					<button data-tab="projects">Projects</button>
 					<button data-tab="generate">Generate</button>
 				</nav>
+				<button id="new-secret" class="icon" title="New secret">+</button>
 				<button id="open-web" class="icon" title="Open Coffer">↗</button>
 			</header>
 
@@ -40,6 +42,20 @@
 				<input id="q" class="search" type="search" placeholder="Find a secret…" autocomplete="off" spellcheck="false" />
 				<ul id="results" class="results"></ul>
 				<p id="s-empty" class="muted center" hidden></p>
+			</div>
+
+			<div id="tab-projects" hidden>
+				<ul id="p-list" class="results"></ul>
+				<div id="p-view" hidden>
+					<div class="crumb">
+						<button id="p-back" class="icon" title="All projects">‹</button>
+						<b id="p-name" class="grow"></b>
+						<button id="p-new" class="btn sm">+ New</button>
+					</div>
+					<nav id="p-envs" class="chips"></nav>
+					<ul id="p-secrets" class="results"></ul>
+				</div>
+				<p id="p-empty" class="muted center" hidden></p>
 			</div>
 
 			<div id="tab-generate" hidden>
@@ -66,8 +82,19 @@
 
 			<!-- Save a value to a project -->
 			<form id="save" class="save" hidden>
-				<h3>Save to a project</h3>
+				<h3 id="sv-title">Save to a project</h3>
 				<label>Name<input id="sv-key" placeholder="EXAMPLE_COM_PASSWORD" required spellcheck="false" /></label>
+				<div id="sv-value-row">
+					<div class="row">
+						<label class="grow">Value<textarea id="sv-value" rows="3" spellcheck="false" autocomplete="off"></textarea></label>
+						<label>Type<select id="sv-type">
+							<option value="text">Text</option>
+							<option value="password">Password</option>
+							<option value="note">Note</option>
+							<option value="key">Key</option>
+						</select></label>
+					</div>
+				</div>
 				<div class="row">
 					<label class="grow">Project<select id="sv-project"></select></label>
 					<label class="grow">Environment<select id="sv-env"></select></label>

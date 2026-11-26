@@ -10,7 +10,9 @@ const COPY = svg('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 1
 
 let selected = 0;
 let results = [];
-let saving = null; // { value, type, key }
+let saving = null; // { value?, type, key, project?, env?, path? }; no value: the form asks for one
+let projects = [];
+let current = null; // the project open in the Projects tab: { project, env }
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
@@ -89,15 +91,16 @@ $('disconnect').addEventListener('click', async () => {
 });
 
 $('open-web').addEventListener('click', () => chrome.tabs.create({ url: cfg.url }));
+$('new-secret').addEventListener('click', () => openSave({ type: 'text', key: '', project: current?.project.slug, env: current?.env }));
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
 for (const b of document.querySelectorAll('.tabs button')) {
 	b.addEventListener('click', () => {
 		for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('active', x === b);
-		$('tab-search').hidden = b.dataset.tab !== 'search';
-		$('tab-generate').hidden = b.dataset.tab !== 'generate';
+		for (const t of ['search', 'projects', 'generate']) $(`tab-${t}`).hidden = b.dataset.tab !== t;
 		if (b.dataset.tab === 'generate') regenerate();
+		else if (b.dataset.tab === 'projects') showProjects();
 		else $('q').focus();
 	});
 }
@@ -127,9 +130,13 @@ async function search(q) {
 		selected = 0;
 		render();
 	} catch (err) {
-		if (err.status === 401) return showConnect('That token no longer works. Make a new one in Coffer.');
-		toast(err.message, true);
+		failed(err);
 	}
+}
+
+function failed(err) {
+	if (err.status === 401) return showConnect('That token no longer works. Make a new one in Coffer.');
+	toast(err.message, true);
 }
 
 const ref = (s) => `${s.projectSlug}/${s.envSlug}${s.path === '/' ? '' : s.path}`;
@@ -140,18 +147,9 @@ function render() {
 	$('s-empty').hidden = results.length > 0;
 	$('s-empty').textContent = $('q').value.trim() ? 'Nothing matches.' : 'No secrets yet.';
 	results.forEach((s, i) => {
-		const li = document.createElement('li');
+		const li = secretRow(s, ref(s));
 		li.className = i === selected ? 'sel' : '';
 		li.title = 'Click or Enter to copy';
-		li.innerHTML = `<span class="t"></span><div class="txt"><div class="k"></div><div class="w"></div></div><div class="acts"><button class="icon" data-a="show" title="Show">${EYE}</button><button class="icon" data-a="copy" title="Copy">${COPY}</button></div>`;
-		li.querySelector('.t').textContent = TYPE_GLYPH[s.type] ?? 'T';
-		li.querySelector('.k').textContent = s.key;
-		li.querySelector('.w').textContent = ref(s) + (s.note ? ` · ${s.note}` : '');
-		li.addEventListener('click', (e) => {
-			const a = e.target.closest('button')?.dataset.a;
-			if (a === 'show') return reveal(s, li);
-			copySecret(s);
-		});
 		li.addEventListener('mouseenter', () => {
 			selected = i;
 			for (const [j, x] of [...ul.children].entries()) x.className = j === i ? 'sel' : '';
@@ -159,6 +157,22 @@ function render() {
 		ul.append(li);
 	});
 	ul.children[selected]?.scrollIntoView({ block: 'nearest' });
+}
+
+/** One secret in a list: click to copy, the eye to show its value. */
+function secretRow(s, where) {
+	const li = document.createElement('li');
+	li.title = 'Click to copy';
+	li.innerHTML = `<span class="t"></span><div class="txt"><div class="k"></div><div class="w"></div></div><div class="acts"><button class="icon" data-a="show" title="Show">${EYE}</button><button class="icon" data-a="copy" title="Copy">${COPY}</button></div>`;
+	li.querySelector('.t').textContent = TYPE_GLYPH[s.type] ?? 'T';
+	li.querySelector('.k').textContent = s.key;
+	li.querySelector('.w').textContent = [where, s.note].filter(Boolean).join(' · ');
+	li.addEventListener('click', (e) => {
+		const a = e.target.closest('button')?.dataset.a;
+		if (a === 'show') return reveal(s, li);
+		copySecret(s);
+	});
+	return li;
 }
 
 async function reveal(s, li) {
@@ -189,6 +203,71 @@ async function copy(value, label) {
 	await scheduleClipboardClear(value);
 	toast(`Copied ${label}. Clears in 30 seconds.`);
 }
+
+// ── Projects ──────────────────────────────────────────────────────────────────
+
+async function loadProjects() {
+	projects = (await api('/api/v1/projects')).projects;
+}
+
+async function showProjects() {
+	try {
+		await loadProjects();
+	} catch (err) {
+		return failed(err);
+	}
+	if (current) return openProject(current.project.slug, current.env);
+	$('p-view').hidden = true;
+	const ul = $('p-list');
+	ul.hidden = false;
+	ul.replaceChildren(
+		...projects.map((p) => {
+			const li = document.createElement('li');
+			li.innerHTML = `<span class="t">▤</span><div class="txt"><div class="k"></div><div class="w"></div></div><span class="n"></span>`;
+			li.querySelector('.k').textContent = p.name;
+			li.querySelector('.w').textContent = p.environments.map((e) => e.name).join(' · ');
+			li.querySelector('.n').textContent = p.secretCount;
+			li.addEventListener('click', () => openProject(p.slug));
+			return li;
+		})
+	);
+	$('p-empty').hidden = projects.length > 0;
+	$('p-empty').textContent = 'No projects yet. Make one in Coffer.';
+}
+
+async function openProject(slug, envSlug) {
+	const project = projects.find((p) => p.slug === slug);
+	if (!project) return ((current = null), showProjects());
+	const env = project.environments.find((e) => e.slug === envSlug) ?? project.environments[0];
+	current = { project, env: env?.slug };
+	$('p-list').hidden = true;
+	$('p-view').hidden = false;
+	$('p-name').textContent = project.name;
+	$('p-envs').replaceChildren(
+		...project.environments.map((e) => {
+			const b = document.createElement('button');
+			b.textContent = e.name;
+			b.className = e.slug === current.env ? 'active' : '';
+			b.addEventListener('click', () => openProject(slug, e.slug));
+			return b;
+		})
+	);
+	let secrets = [];
+	try {
+		if (env) secrets = (await api(`/api/v1/projects/${encodeURIComponent(slug)}/secrets?env=${encodeURIComponent(env.slug)}`)).secrets;
+	} catch (err) {
+		return failed(err);
+	}
+	$('p-secrets').replaceChildren(...secrets.map((s) => secretRow(s, s.path === '/' ? '' : s.path)));
+	$('p-empty').hidden = secrets.length > 0;
+	$('p-empty').textContent = `No secrets in ${env?.name ?? 'this project'} yet.`;
+}
+
+$('p-back').addEventListener('click', () => {
+	current = null;
+	showProjects();
+});
+$('p-new').addEventListener('click', () => openSave({ type: 'text', key: '', project: current.project.slug, env: current.env }));
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 
@@ -262,15 +341,19 @@ const keyFor = (host) => (host ? `${host.replace(/^www\./, '').replace(/[^A-Za-z
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 
-let projects = [];
-
 async function openSave(item) {
 	saving = item;
+	const asking = item.value === undefined;
 	$('save').hidden = false;
+	$('sv-title').textContent = asking ? 'New secret' : 'Save to a project';
+	$('sv-value-row').hidden = !asking;
+	$('sv-value').value = '';
+	$('sv-type').value = item.type;
 	$('sv-key').value = item.key || '';
+	$('sv-note').value = '';
 	$('sv-error').textContent = '';
 	try {
-		projects = (await api('/api/v1/projects')).projects;
+		await loadProjects();
 	} catch (err) {
 		$('sv-error').textContent = err.message;
 		return;
@@ -280,9 +363,10 @@ async function openSave(item) {
 		return;
 	}
 	const last = (await chrome.storage.local.get('lastSave')).lastSave ?? {};
-	$('sv-project').replaceChildren(...projects.map((p) => new Option(p.name, p.slug, false, p.slug === last.project)));
-	fillEnvs(last.env);
-	$('sv-path').value = last.path ?? '/';
+	const project = item.project ?? last.project;
+	$('sv-project').replaceChildren(...projects.map((p) => new Option(p.name, p.slug, false, p.slug === project)));
+	fillEnvs(item.project ? item.env : last.env);
+	$('sv-path').value = item.path ?? last.path ?? '/';
 	$('sv-key').focus();
 }
 
@@ -300,17 +384,22 @@ $('save').addEventListener('submit', async (e) => {
 	const project = $('sv-project').value;
 	const env = $('sv-env').value;
 	const path = $('sv-path').value || '/';
+	const value = saving.value ?? $('sv-value').value;
+	const type = saving.value === undefined ? $('sv-type').value : saving.type;
+	if (!value) return ($('sv-error').textContent = 'Enter a value');
 	try {
 		await api(`/api/v1/projects/${encodeURIComponent(project)}/secrets`, {
 			method: 'POST',
-			body: { env, path, key: $('sv-key').value.trim(), type: saving.type, value: saving.value, note: $('sv-note').value || undefined }
+			body: { env, path, key: $('sv-key').value.trim(), type, value, note: $('sv-note').value || undefined }
 		});
 		await chrome.storage.local.set({ lastSave: { project, env, path } });
 		await chrome.storage.session.remove('lastGenerated');
 		$('save').hidden = true;
 		$('last').hidden = true;
 		toast(`Saved ${$('sv-key').value.trim()} to ${project}/${env}`);
+		$('sv-value').value = '';
 		search($('q').value);
+		if (!$('tab-projects').hidden) showProjects();
 	} catch (err) {
 		$('sv-error').textContent = err.message;
 	}
