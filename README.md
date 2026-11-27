@@ -10,6 +10,8 @@
   and one-time links for handing a secret to someone without an account. A web app, a CLI and a browser extension.
 </p>
 
+<p align="center"><a href="https://vitafortis.github.io/coffer/">Website and docs</a></p>
+
 Coffer stores and shares secrets. It deliberately doesn't push them anywhere: no syncing into
 clouds, CI systems or Kubernetes. Things that need a secret fetch it (`coffer get`) or a person
 copies it.
@@ -61,9 +63,28 @@ somewhere other than your database backups. Without it the secrets can't be read
 holding a database backup can read them.
 
 Keep Coffer on your LAN, a VPN, or behind your reverse proxy's sign-in. To send one-time links to
-people outside, expose only `/s/` and `/api/v1/shares/open` (and set **Settings → Public URL**).
-The CLI and extension need `/api/v1/` (they always send a token) and `/cli/` (the installer, which
-holds nothing secret).
+people outside, expose only `/s/`, `/api/v1/shares/open`, `/_app/` (the link page's scripts) and
+`/favicon.svg`, and set **Settings → Public URL**. The CLI and extension need `/api/v1/` (they always
+send a token, and never use the browser's session) and `/cli/` (the installer, which holds nothing
+secret).
+
+### Behind a reverse proxy
+
+Serve Coffer at the root of its own host name; it can't live under a path. Have the proxy pass
+`Host`, `X-Forwarded-Proto` and `X-Forwarded-For`, and tell Coffer to trust them:
+
+```yaml
+    environment:
+      PROTOCOL_HEADER: x-forwarded-proto
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1    # proxies in front of Coffer
+```
+
+Without `ADDRESS_HEADER`, every request seems to come from the proxy: the sign-in limit (10 per
+address per 5 minutes) is shared by the whole team, and the activity log shows the proxy's address.
+Only set these when nothing but the proxy can reach Coffer's port. Caddy, nginx and Traefik
+examples, and how to expose only one-time links:
+[Behind a reverse proxy](https://vitafortis.github.io/coffer/docs/reverse-proxy.html).
 
 ### Environment
 
@@ -72,7 +93,9 @@ holds nothing secret).
 | `COFFER_DATA_DIR` | Database and key file. `/data` in the image. |
 | `COFFER_SECRET_KEY` | Master key. Unset: a random key in `$COFFER_DATA_DIR/secret.key`. |
 | `COFFER_ADMIN_EMAIL`, `COFFER_ADMIN_PASSWORD` | Create the admin on start instead of in the setup screen. |
-| `PROTOCOL_HEADER`, `HOST_HEADER` | Behind a TLS-terminating proxy: `x-forwarded-proto`, `x-forwarded-host`. |
+| `PROTOCOL_HEADER` | Behind a TLS-terminating proxy: `x-forwarded-proto`. |
+| `ADDRESS_HEADER`, `XFF_DEPTH` | Behind a proxy: `x-forwarded-for` and how many proxies, so rate limits and the activity log see real addresses. |
+| `HOST_HEADER` | Only when the proxy rewrites `Host`: `x-forwarded-host`. |
 
 ## CLI
 

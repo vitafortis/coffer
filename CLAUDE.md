@@ -11,3 +11,4 @@
 - Password rules are written three times: `src/lib/generate.ts` (web + server), `extension/generate.js`, `cli/coffer.mjs`. Change them together.
 - The CLI (`cli/coffer.mjs`) and extension (`extension/`) are served by `/cli/coffer`, `/cli/install.sh` and `/cli/coffer-extension.zip` (`assets.ts`, `zip.ts`); the CLI's `__COFFER_URL__` is replaced with the server's address.
 - Checks: `pnpm check`, `pnpm test`, `pnpm build`.
+- The website (GitHub Pages) is `site/`: `index.html` and the docs in `site/docs/*.md`, built into `_site/` by `scripts/build-site.mjs` (needs `marked`, installed on its own in CI) and published by `.github/workflows/pages.yml`. `site/assets/site.css` shares the ·modern tokens. Keep the docs in step with features, especially `reverse-proxy.md`.

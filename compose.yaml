@@ -22,9 +22,12 @@ services:
       # /data/secret.key. Either way: back the key up SEPARATELY from the database.
       # Lose it and every secret is gone; leak it with a backup and they're all readable.
       # COFFER_SECRET_KEY: ${COFFER_SECRET_KEY}
-      # Behind a reverse proxy that terminates TLS (so links and cookies use https).
-      # PROTOCOL_HEADER: x-forwarded-proto
-      # HOST_HEADER: x-forwarded-host
+      # Behind a reverse proxy (https://vitafortis.github.io/coffer/docs/reverse-proxy.html).
+      # Only when nothing but the proxy can reach this port: Coffer then trusts these headers.
+      # PROTOCOL_HEADER: x-forwarded-proto   # cookies and links use https
+      # ADDRESS_HEADER: x-forwarded-for      # rate limits and the activity log see real addresses
+      # XFF_DEPTH: 1                         # how many proxies are in front
+      # HOST_HEADER: x-forwarded-host        # only if the proxy rewrites Host
     volumes:
       # The database (encrypted secrets, people, tokens, links) and the key file.
       - coffer-data:/data

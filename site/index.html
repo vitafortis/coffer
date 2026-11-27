@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+	<title>Coffer · Self-hosted secrets for a small team</title>
+	<meta name="description" content="Projects and environments, passwords, keys, key pairs and certificates, version history and one-time links. A web app, a CLI and a browser extension, on your own server." />
+	<link rel="icon" href="logo.svg" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" />
+	<link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+	<header class="top">
+		<div class="wrap">
+			<a class="brand" href="./"><img src="logo.svg" alt="" />Coffer</a>
+			<nav>
+				<a href="docs/index.html">Docs</a>
+				<a class="hide-sm" href="docs/install.html">Install</a>
+				<a class="hide-sm" href="docs/security.html">Security</a>
+				<a href="https://github.com/vitafortis/coffer">GitHub</a>
+			</nav>
+		</div>
+	</header>
+
+	<main class="wrap">
+		<section class="hero">
+			<h1>Self-hosted secrets for a small team</h1>
+			<p>Passwords, API keys, key pairs and certificates, by project and environment, encrypted on your own server. Use them from the browser, the command line or a browser extension, and share one with a link that works once.</p>
+			<div class="ctas">
+				<a class="btn primary" href="docs/install.html">Install with Docker</a>
+				<a class="btn" href="docs/index.html">Read the docs</a>
+			</div>
+			<pre class="term"><code><span class="c"># fetch what you need, where you need it</span>
+coffer use billing-api prod
+coffer get DATABASE_URL
+coffer gen password -l 32 --save ADMIN_PASSWORD
+coffer gen cert --cn api.internal --days 90 --issuer infra/prod/ca/ROOT_CA --save TLS
+coffer share DATABASE_URL --expires 1h   <span class="c"># → https://coffer.example.com/s/…#…</span></code></pre>
+		</section>
+
+		<section class="lede" style="padding-block: 3.5rem 1rem">
+			<h2>Stores and shares secrets. Doesn't push them anywhere.</h2>
+			<p>No syncing into clouds, CI or Kubernetes. Whatever needs a secret fetches it with a token, or a person copies it, and every read is in the activity log with who did it.</p>
+		</section>
+
+		<section style="padding-block: 1rem 3.5rem">
+			<div class="grid3">
+				<div class="tile">
+					<span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="8" x="7" y="8" rx="1"/></svg></span>
+					<h4>Projects and environments</h4>
+					<p>Every environment has its own value for each secret, in folders. <b>Compare</b> shows what's missing from production, and copies it across in one click.</p>
+				</div>
+				<div class="tile">
+					<span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
+					<h4>Keys and certificates</h4>
+					<p>Generate passwords, keys, SSH key pairs and X.509 certificates, including ones signed by a CA you keep in Coffer. Certificates about to expire show on the home page.</p>
+				</div>
+				<div class="tile">
+					<span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg></span>
+					<h4>One-time links</h4>
+					<p>Hand a secret to someone without an account. The key lives only in the link's <code>#fragment</code>, so not even the server can open it, and it's wiped after it's read.</p>
+				</div>
+				<div class="tile">
+					<span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span>
+					<h4>Browser extension</h4>
+					<p>The secrets for the site you're on come first, ready to fill. Search everything, and fill new-password fields from the right-click menu.</p>
+				</div>
+				<div class="tile">
+					<span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span>
+					<h4>History and activity</h4>
+					<p>The last 30 values of every secret, with who set each one. Restore any of them in one click. Every read, change, share and sign-in is logged.</p>
+				</div>
+				<div class="tile">
+					<span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg></span>
+					<h4>Tokens for people and scripts</h4>
+					<p>Personal API tokens, optionally read-only and expiring. Only a hash is stored, and a token can't open the web app or make more tokens.</p>
+				</div>
+			</div>
+		</section>
+
+		<section style="padding-block: 3.5rem; border-top: 1px solid var(--border)">
+			<div class="lede">
+				<h2>Encrypted at rest, and you hold the key</h2>
+				<p>Values are encrypted with AES-256-GCM under a master key that never leaves your server, each one bound to its own row. Lists and search never decrypt.</p>
+				<p><a href="docs/security.html">The security model →</a></p>
+			</div>
+		</section>
+
+		<section class="start">
+			<div>
+				<h2>Up in a minute</h2>
+				<p>All you need is Docker. Create the admin in the browser, then add people, a project and a token for the CLI. Going public? Read <a href="docs/reverse-proxy.html">Behind a reverse proxy</a> first.</p>
+				<a class="btn" href="docs/install.html">Installation guide</a>
+			</div>
+			<pre><code>mkdir coffer &amp;&amp; cd coffer
+curl -fsSLO https://raw.githubusercontent.com/vitafortis/coffer/main/compose.yaml
+docker compose up -d
+# then open http://&lt;your-host&gt;:3070</code></pre>
+		</section>
+	</main>
+
+	<footer>
+		<div class="wrap">
+			<span>Coffer is open source under Apache 2.0.</span>
+			<span><a href="docs/index.html">Docs</a> · <a href="https://github.com/vitafortis/coffer">GitHub</a> · <a href="https://github.com/vitafortis/coffer/pkgs/container/coffer">Image</a></span>
+		</div>
+	</footer>
+</body>
+</html>

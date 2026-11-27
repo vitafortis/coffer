@@ -23,3 +23,6 @@ vite.config.ts.timestamp-*
 
 # pnpm store when installed through corepack in this folder
 /.pnpm-store
+
+# The GitHub Pages site, built by scripts/build-site.mjs
+/_site
