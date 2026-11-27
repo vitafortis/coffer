@@ -26,4 +26,6 @@ Secrets with a URL show that site's icon, taken from the browser's own favicon c
 
 ## What it doesn't do
 
-It never reads pages or fills logins by itself. It touches a page only when you click **Fill in page** or use the right-click menu. The extension authenticates with its token alone and never uses your browser's Coffer session, so revoking the token in **Settings → API tokens** disconnects it.
+It never reads pages or fills logins by itself. It touches a page only when you click **Fill in page** or use the right-click menu. The extension signs in to Coffer with its token alone, never with your browser's Coffer session, so revoking the token in **Settings → API tokens** disconnects it.
+
+If Coffer is behind a proxy with its own sign-in and the popup says *"Something in front of Coffer answered instead"*, the proxy is asking for that sign-in. Let `/api/v1/` through it: see [Sign-in at the proxy](reverse-proxy.html#sign-in-at-the-proxy).

@@ -1,6 +1,6 @@
 # Behind a reverse proxy
 
-Most installs put Coffer behind Caddy, nginx, Traefik or a tunnel that terminates TLS. Coffer works without any of the settings below, but some parts work wrongly. The short version:
+Most installs put Coffer behind Caddy, nginx, Traefik, Pangolin or a tunnel that terminates TLS. Coffer works without any of the settings below, but some parts work wrongly. The short version:
 
 1. Serve Coffer at the **root of its own host name**, such as `https://coffer.example.com`. It can't be served under a path.
 2. Have the proxy pass **`Host`**, **`X-Forwarded-Proto`** and **`X-Forwarded-For`**.
@@ -88,9 +88,20 @@ services:
       - coffer-data:/data
 ```
 
+### Pangolin
+
+On the Coffer resource, keep **SSO** (or other authentication) on, and under **Rules** turn rules on and add:
+
+| Action | Match | Value |
+| --- | --- | --- |
+| Always Allow | Path | `/api/v1/*` |
+| Always Allow | Path | `/cli/*` |
+
+Add `/s/*`, `/api/v1/shares/open`, `/_app/*` and `/favicon.svg` as well if people without an account should open one-time links. The section below explains why these paths are safe to allow. Pangolin's tunnel adds one hop, so check the client addresses in **Activity** after a sign-in. If they all show the same internal address, raise `XFF_DEPTH`.
+
 ## Sign-in at the proxy
 
-You can put Coffer behind your proxy's own sign-in (Authelia, Authentik, oauth2-proxy, Cloudflare Access and so on), and people sign in to Coffer after that. Let these paths through without the proxy's sign-in:
+You can put Coffer behind your proxy's own sign-in (Authelia, Authentik, oauth2-proxy, Cloudflare Access, Pangolin and so on), and people sign in to Coffer after that. Let these paths through without the proxy's sign-in:
 
 | Path | Why |
 | --- | --- |
@@ -98,7 +109,9 @@ You can put Coffer behind your proxy's own sign-in (Authelia, Authentik, oauth2-
 | `/cli/` | The CLI, its installer and the extension download. They hold nothing secret. |
 | `/api/health` | The container health check, if something outside checks it. |
 
-The CLI and extension never use your browser's session. They send `Authorization: Bearer cof_…`, and when a request carries a token, Coffer uses only the token: a revoked or mistyped token is refused even if the browser also sends a valid session cookie. That's why the extension works through a proxy with no access rules, and why the proxy's sign-in can't stand in for a token.
+The CLI and extension sign in to Coffer with `Authorization: Bearer cof_…`. When a request carries a token, Coffer uses only the token: a revoked or mistyped token is refused even if a valid Coffer session cookie comes along with it.
+
+> **"The extension works, but the CLI doesn't."** Once you've allowed the extension access to Coffer's site, the browser attaches that site's cookies to the extension's requests, including your proxy's sign-in cookie. So the extension gets past the proxy while you're signed in to the proxy, and stops when that session ends. The CLI has no browser cookies and never gets past it. Both report *"Something in front of Coffer answered instead"* when that happens. Letting the paths above through fixes both.
 
 Tokens only work on `/api/v1/`, so letting that path through doesn't let a token open the web app.
 

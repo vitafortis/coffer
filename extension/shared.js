@@ -18,13 +18,28 @@ export async function api(path, { method = 'GET', body } = {}) {
 	} catch {
 		throw new Error(`Can't reach ${url}`);
 	}
-	const data = await res.json().catch(() => ({}));
-	if (!res.ok) {
-		const err = new Error(data.message ?? `${res.status} ${res.statusText}`);
+	if (!res.ok || !isJson(res)) throw await failure(res);
+	return res.json();
+}
+
+const isJson = (res) => (res.headers.get('content-type') ?? '').includes('application/json');
+
+/**
+ * The error for a response that isn't a good answer from Coffer. Coffer's API always answers in
+ * JSON, so anything else (a 401, or a sign-in page after redirects) came from a proxy in front of
+ * it: `proxy` is set, and the token isn't to blame.
+ */
+export async function failure(res) {
+	if (!isJson(res)) {
+		const err = new Error(`Something in front of Coffer answered instead (HTTP ${res.status}), probably a proxy asking for sign-in. Let /api/v1/ through without it: the extension signs in with its token.`);
 		err.status = res.status;
-		throw err;
+		err.proxy = true;
+		return err;
 	}
-	return data;
+	const data = await res.json().catch(() => ({}));
+	const err = new Error(data.message ?? `Coffer answered ${res.status}`);
+	err.status = res.status;
+	return err;
 }
 
 /**

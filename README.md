@@ -64,9 +64,10 @@ holding a database backup can read them.
 
 Keep Coffer on your LAN, a VPN, or behind your reverse proxy's sign-in. To send one-time links to
 people outside, expose only `/s/`, `/api/v1/shares/open`, `/_app/` (the link page's scripts) and
-`/favicon.svg`, and set **Settings → Public URL**. The CLI and extension need `/api/v1/` (they always
-send a token, and never use the browser's session) and `/cli/` (the installer, which holds nothing
-secret).
+`/favicon.svg`, and set **Settings → Public URL**. The CLI and extension need `/api/v1/` and `/cli/` (the
+installer, which holds nothing secret) let through any sign-in at your proxy: they sign in to Coffer
+with a token. The extension may seem to work without that while your browser is signed in to the
+proxy, since the browser sends the proxy's cookie along with it, but the CLI won't.
 
 ### Behind a reverse proxy
 

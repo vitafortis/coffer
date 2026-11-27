@@ -160,6 +160,10 @@ async function call(method, path, body, { auth = true, url = baseUrl() } = {}) {
 	} catch (err) {
 		fail(`Can't reach ${url}: ${err.cause?.code ?? err.message}`);
 	}
+	// Coffer's API always answers in JSON; anything else came from something in front of it.
+	if (!(res.headers.get('content-type') ?? '').includes('application/json')) {
+		fail(`Something in front of Coffer answered instead (HTTP ${res.status}), probably a proxy asking for sign-in. Let /api/v1/ through without it: the CLI signs in with its token.`);
+	}
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) fail(data.message ?? `${res.status} ${res.statusText}`, res.status === 401 ? 3 : 1);
 	return data;

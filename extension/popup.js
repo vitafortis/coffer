@@ -1,5 +1,5 @@
 import { DEFAULT_OPTIONS, generatePassword, passwordBits } from './generate.js';
-import { api, fillFocused, fillLogin, getConfig, scheduleClipboardClear } from './shared.js';
+import { api, failure, fillFocused, fillLogin, getConfig, scheduleClipboardClear } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 const TYPE_GLYPH = { text: 'T', password: '•', note: '¶', key: '⚿', certificate: '✓', keypair: '⌘' };
@@ -55,8 +55,8 @@ $('connect-form').addEventListener('submit', async (e) => {
 	const token = $('c-token').value.trim();
 	try {
 		const res = await fetch(`${url}/api/v1/me`, { headers: { authorization: `Bearer ${token}` } });
-		const me = await res.json().catch(() => ({}));
-		if (!res.ok) throw new Error(me.message ?? `${res.status} ${res.statusText}`);
+		if (!res.ok || !(res.headers.get('content-type') ?? '').includes('application/json')) throw await failure(res);
+		const me = await res.json();
 		// Switching servers: let go of the old one's site access.
 		const old = cfg.url && new URL(cfg.url).origin;
 		if (old && old !== new URL(url).origin) await chrome.permissions.remove({ origins: [`${old}/*`] }).catch(() => {});
@@ -145,7 +145,7 @@ async function search(q) {
 }
 
 function failed(err) {
-	if (err.status === 401) return showConnect('That token no longer works. Make a new one in Coffer.');
+	if (err.status === 401 && !err.proxy) return showConnect('That token no longer works. Make a new one in Coffer.');
 	toast(err.message, true);
 }
 
@@ -474,5 +474,6 @@ function toast(msg, error = false) {
 	t.className = `toast${error ? ' error' : ''}`;
 	t.hidden = false;
 	clearTimeout(toastTimer);
-	toastTimer = setTimeout(() => (t.hidden = true), error ? 4000 : 2200);
+	// Long enough to read: the proxy message is a couple of sentences.
+	toastTimer = setTimeout(() => (t.hidden = true), Math.max(error ? 4000 : 2200, msg.length * 45));
 }
