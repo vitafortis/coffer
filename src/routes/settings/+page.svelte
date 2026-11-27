@@ -142,66 +142,86 @@
 	}
 
 	const install = $derived(`curl -fsSL ${data.base}/cli/install.sh | sh`);
+
+	// The section list beside the cards on wide screens.
+	const sections = $derived([
+		{ id: 'account', label: 'Your account', icon: UserRound },
+		{ id: 'tokens', label: 'API tokens', icon: KeyRound },
+		{ id: 'cli', label: 'Command line', icon: Terminal },
+		{ id: 'extension', label: 'Browser extension', icon: Puzzle },
+		...(session.viewer?.admin
+			? [
+					{ id: 'people', label: 'People', icon: Users },
+					{ id: 'server', label: 'Server', icon: Server }
+				]
+			: [])
+	]);
 </script>
 
 <svelte:head><title>Settings · Coffer</title></svelte:head>
 
 <PageHeader title="Settings" />
 
-<div class="mx-auto max-w-3xl space-y-6 px-4 pb-12 sm:px-8">
-	<section id="account" class="card p-5">
-		<h2 class="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold"><UserRound class="size-4 text-primary" />Your account</h2>
-		<form class="grid gap-3 sm:grid-cols-2" onsubmit={saveAccount}>
-			<div>
-				<label class="label" for="a-email">Email</label>
-				<input id="a-email" class="input" value={data.me.email} disabled />
-			</div>
-			<div>
-				<label class="label" for="a-name">Name</label>
-				<input id="a-name" class="input" bind:value={name} maxlength="100" />
-			</div>
-			<div>
-				<label class="label" for="a-current">Current password</label>
-				<input id="a-current" class="input" type="password" autocomplete="current-password" bind:value={current} />
-			</div>
-			<div>
-				<label class="label" for="a-next">New password <span class="font-normal">(10+ characters)</span></label>
-				<input id="a-next" class="input" type="password" autocomplete="new-password" bind:value={next} minlength="10" />
-			</div>
-			<div class="sm:col-span-2"><button class="btn btn-primary" disabled={accountBusy}>{#if accountBusy}<LoaderCircle class="animate-spin" />{/if}Save</button></div>
-		</form>
-	</section>
+<div class="flex gap-8 px-4 pb-12 sm:px-8">
+	<nav class="sticky top-6 hidden w-48 shrink-0 self-start lg:block" aria-label="Settings">
+		{#each sections as s (s.id)}
+			<a href="#{s.id}" class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[0.8125rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"><s.icon class="size-3.5" />{s.label}</a>
+		{/each}
+	</nav>
+	<div class="min-w-0 max-w-3xl flex-1 space-y-6">
+		<section id="account" class="card scroll-mt-6 p-5">
+			<h2 class="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold"><UserRound class="size-4 text-primary" />Your account</h2>
+			<form class="grid gap-3 sm:grid-cols-2" onsubmit={saveAccount}>
+				<div>
+					<label class="label" for="a-email">Email</label>
+					<input id="a-email" class="input" value={data.me.email} disabled />
+				</div>
+				<div>
+					<label class="label" for="a-name">Name</label>
+					<input id="a-name" class="input" bind:value={name} maxlength="100" />
+				</div>
+				<div>
+					<label class="label" for="a-current">Current password</label>
+					<input id="a-current" class="input" type="password" autocomplete="current-password" bind:value={current} />
+				</div>
+				<div>
+					<label class="label" for="a-next">New password <span class="font-normal">(10+ characters)</span></label>
+					<input id="a-next" class="input" type="password" autocomplete="new-password" bind:value={next} minlength="10" />
+				</div>
+				<div class="sm:col-span-2"><button class="btn btn-primary" disabled={accountBusy}>{#if accountBusy}<LoaderCircle class="animate-spin" />{/if}Save</button></div>
+			</form>
+		</section>
 
-	<section id="tokens" class="card p-5">
-		<div class="mb-1 flex items-center justify-between gap-2">
-			<h2 class="flex items-center gap-2 text-[0.9375rem] font-semibold"><KeyRound class="size-4 text-primary" />API tokens</h2>
-			<button class="btn btn-secondary btn-sm" onclick={() => openToken('')}><Plus />New token</button>
-		</div>
-		<p class="mb-4 text-xs text-muted-foreground">For the CLI and the browser extension. A token acts as you; read-only ones can read and share but not change anything.</p>
-		{#if data.tokens.length}
-			<ul class="divide-y divide-border rounded-lg border border-border">
-				{#each data.tokens as t (t.id)}
-					{@const expired = !!t.expiresAt && Date.parse(t.expiresAt) < Date.now()}
-					<li class="flex items-center gap-3 px-3 py-2 text-[0.8125rem]">
-						<div class="min-w-0 flex-1">
-							<p class="truncate font-medium">{t.name} {#if t.readOnly}<span class="badge ml-1">read-only</span>{/if}{#if expired}<span class="badge badge-danger ml-1">expired</span>{/if}</p>
-							<p class="truncate text-[0.6875rem] text-muted-foreground">
-								<span class="font-mono">{t.prefix}…</span> · made {ago(t.createdAt)} · {t.lastUsedAt ? `used ${ago(t.lastUsedAt)}` : 'never used'}{t.expiresAt && !expired ? ` · expires ${until(t.expiresAt)}` : ''}
-							</p>
-						</div>
-						<button class="btn btn-ghost btn-icon btn-sm" title="Revoke" onclick={() => revokeToken(t)}><Trash2 /></button>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</section>
+		<section id="tokens" class="card scroll-mt-6 p-5">
+			<div class="mb-1 flex items-center justify-between gap-2">
+				<h2 class="flex items-center gap-2 text-[0.9375rem] font-semibold"><KeyRound class="size-4 text-primary" />API tokens</h2>
+				<button class="btn btn-secondary btn-sm" onclick={() => openToken('')}><Plus />New token</button>
+			</div>
+			<p class="mb-4 text-xs text-muted-foreground">For the CLI and the browser extension. A token acts as you; read-only ones can read and share but not change anything.</p>
+			{#if data.tokens.length}
+				<ul class="divide-y divide-border rounded-lg border border-border">
+					{#each data.tokens as t (t.id)}
+						{@const expired = !!t.expiresAt && Date.parse(t.expiresAt) < Date.now()}
+						<li class="flex items-center gap-3 px-3 py-2 text-[0.8125rem]">
+							<div class="min-w-0 flex-1">
+								<p class="truncate font-medium">{t.name} {#if t.readOnly}<span class="badge ml-1">read-only</span>{/if}{#if expired}<span class="badge badge-danger ml-1">expired</span>{/if}</p>
+								<p class="truncate text-[0.6875rem] text-muted-foreground">
+									<span class="font-mono">{t.prefix}…</span> · made {ago(t.createdAt)} · {t.lastUsedAt ? `used ${ago(t.lastUsedAt)}` : 'never used'}{t.expiresAt && !expired ? ` · expires ${until(t.expiresAt)}` : ''}
+								</p>
+							</div>
+							<button class="btn btn-ghost btn-icon btn-sm" title="Revoke" onclick={() => revokeToken(t)}><Trash2 /></button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
 
-	<section id="cli" class="card p-5">
-		<h2 class="mb-1 flex items-center gap-2 text-[0.9375rem] font-semibold"><Terminal class="size-4 text-primary" />Command line</h2>
-		<p class="mb-3 text-xs text-muted-foreground">One file, needs Node 20 or later. Installs to ~/.local/bin/coffer, already pointed at this server.</p>
-		<CopyField value={install} />
-		<p class="mt-3 mb-1.5 text-xs text-muted-foreground">Then sign it in with a token, and try it:</p>
-		<pre class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[0.6875rem] leading-relaxed">coffer login                        # paste a token
+		<section id="cli" class="card scroll-mt-6 p-5">
+			<h2 class="mb-1 flex items-center gap-2 text-[0.9375rem] font-semibold"><Terminal class="size-4 text-primary" />Command line</h2>
+			<p class="mb-3 text-xs text-muted-foreground">One file, needs Node 20 or later. Installs to ~/.local/bin/coffer, already pointed at this server.</p>
+			<CopyField value={install} />
+			<p class="mt-3 mb-1.5 text-xs text-muted-foreground">Then sign it in with a token, and try it:</p>
+			<pre class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[0.6875rem] leading-relaxed">coffer login                        # paste a token
 coffer use my-project dev           # default project and environment
 coffer ls                           # what's in it
 coffer get DATABASE_URL             # print a value
@@ -210,72 +230,73 @@ coffer gen password -l 32 --save ADMIN_PASSWORD
 coffer share DATABASE_URL --expires 1h
 echo "hello" | coffer share -       # share any text once
 coffer open 'https://…/s/abc#key'   # read a one-time link</pre>
-		<button class="btn btn-secondary btn-sm mt-3" onclick={() => openToken(`CLI on ${navigator.platform || 'my computer'}`)}><Plus />Make a CLI token</button>
-	</section>
+			<button class="btn btn-secondary btn-sm mt-3" onclick={() => openToken(`CLI on ${navigator.platform || 'my computer'}`)}><Plus />Make a CLI token</button>
+		</section>
 
-	<section id="extension" class="card p-5">
-		<h2 class="mb-1 flex items-center gap-2 text-[0.9375rem] font-semibold"><Puzzle class="size-4 text-primary" />Browser extension</h2>
-		<p class="mb-3 text-xs text-muted-foreground">Search and copy secrets from the toolbar, and right-click any password field to fill it with a new password. For Chrome, Edge, Brave and Arc.</p>
-		<ol class="mb-3 list-decimal space-y-1 pl-5 text-[0.8125rem]">
-			<li>Download and unzip it somewhere it can stay.</li>
-			<li>Open <span class="hash">chrome://extensions</span>, turn on <b>Developer mode</b>, and choose <b>Load unpacked</b> → the unzipped folder.</li>
-			<li>Click the Coffer icon, enter <span class="hash">{data.base}</span> and a token.</li>
-		</ol>
-		<div class="flex flex-wrap gap-2">
-			<a class="btn btn-primary btn-sm" href="/cli/coffer-extension.zip" download><Download />Download extension</a>
-			<button class="btn btn-secondary btn-sm" onclick={() => openToken('Browser extension')}><Plus />Make an extension token</button>
-		</div>
-	</section>
-
-	{#if session.viewer?.admin}
-		<section id="people" class="card p-5">
-			<div class="mb-4 flex items-center justify-between gap-2">
-				<h2 class="flex items-center gap-2 text-[0.9375rem] font-semibold"><Users class="size-4 text-primary" />People</h2>
-				<button class="btn btn-secondary btn-sm" onclick={openPerson}><Plus />Add someone</button>
+		<section id="extension" class="card scroll-mt-6 p-5">
+			<h2 class="mb-1 flex items-center gap-2 text-[0.9375rem] font-semibold"><Puzzle class="size-4 text-primary" />Browser extension</h2>
+			<p class="mb-3 text-xs text-muted-foreground">Search and copy secrets from the toolbar, and right-click any password field to fill it with a new password. For Chrome, Edge, Brave and Arc.</p>
+			<ol class="mb-3 list-decimal space-y-1 pl-5 text-[0.8125rem]">
+				<li>Download and unzip it somewhere it can stay.</li>
+				<li>Open <span class="hash">chrome://extensions</span>, turn on <b>Developer mode</b>, and choose <b>Load unpacked</b> → the unzipped folder.</li>
+				<li>Click the Coffer icon, enter <span class="hash">{data.base}</span> and a token.</li>
+			</ol>
+			<div class="flex flex-wrap gap-2">
+				<a class="btn btn-primary btn-sm" href="/cli/coffer-extension.zip" download><Download />Download extension</a>
+				<button class="btn btn-secondary btn-sm" onclick={() => openToken('Browser extension')}><Plus />Make an extension token</button>
 			</div>
-			<p class="mb-3 text-xs text-muted-foreground">Everyone can see and use every project. Admins also manage people and these settings.</p>
-			<ul class="divide-y divide-border rounded-lg border border-border">
-				{#each data.users as u (u.id)}
-					<li class="flex flex-wrap items-center gap-3 px-3 py-2 text-[0.8125rem]">
-						<div class="min-w-0 flex-1">
-							<p class="truncate font-medium">{u.name ?? u.email}{u.id === data.me.id ? ' (you)' : ''}</p>
-							<p class="truncate text-[0.6875rem] text-muted-foreground">{u.name ? `${u.email} · ` : ''}{u.lastLoginAt ? `signed in ${ago(u.lastLoginAt)}` : 'never signed in'}</p>
-						</div>
-						<select class="input h-8 w-28 text-xs" value={u.role} disabled={u.id === data.me.id} onchange={(e) => setRole(u, e.currentTarget.value)}>
-							<option value="member">Member</option>
-							<option value="admin">Admin</option>
-						</select>
-						{#if u.id !== data.me.id}
-							<button class="btn btn-ghost btn-sm" onclick={() => resetPassword(u)}>Reset password</button>
-							<button class="btn btn-ghost btn-icon btn-sm" title="Remove" onclick={() => removePerson(u)}><Trash2 /></button>
-						{/if}
-					</li>
-				{/each}
-			</ul>
 		</section>
 
-		<section id="server" class="card p-5">
-			<h2 class="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold"><Server class="size-4 text-primary" />Server</h2>
-			<form class="space-y-3" onsubmit={saveServer}>
-				<div>
-					<label class="label" for="s-url">Public URL</label>
-					<input id="s-url" class="input" bind:value={publicUrl} placeholder="https://coffer.example.com" />
-					<p class="mt-1 text-[0.6875rem] text-muted-foreground">The address one-time links and the CLI installer use. Blank: whatever address the request came in on.</p>
+		{#if session.viewer?.admin}
+			<section id="people" class="card scroll-mt-6 p-5">
+				<div class="mb-4 flex items-center justify-between gap-2">
+					<h2 class="flex items-center gap-2 text-[0.9375rem] font-semibold"><Users class="size-4 text-primary" />People</h2>
+					<button class="btn btn-secondary btn-sm" onclick={openPerson}><Plus />Add someone</button>
 				</div>
-				<div class="max-w-xs">
-					<label class="label" for="s-hours">One-time links expire after</label>
-					<select id="s-hours" class="input" bind:value={shareHours}>
-						<option value={1}>1 hour</option>
-						<option value={24}>1 day</option>
-						<option value={72}>3 days</option>
-						<option value={168}>7 days</option>
-					</select>
-				</div>
-				<button class="btn btn-primary">Save</button>
-			</form>
-		</section>
-	{/if}
-	<p class="text-center text-[0.6875rem] text-muted-foreground">Coffer {__APP_VERSION__ ?? ''} · signed in {data.me.lastLoginAt ? dateTime(data.me.lastLoginAt) : ''}</p>
+				<p class="mb-3 text-xs text-muted-foreground">Everyone can see and use every project. Admins also manage people and these settings.</p>
+				<ul class="divide-y divide-border rounded-lg border border-border">
+					{#each data.users as u (u.id)}
+						<li class="flex flex-wrap items-center gap-3 px-3 py-2 text-[0.8125rem]">
+							<div class="min-w-0 flex-1">
+								<p class="truncate font-medium">{u.name ?? u.email}{u.id === data.me.id ? ' (you)' : ''}</p>
+								<p class="truncate text-[0.6875rem] text-muted-foreground">{u.name ? `${u.email} · ` : ''}{u.lastLoginAt ? `signed in ${ago(u.lastLoginAt)}` : 'never signed in'}</p>
+							</div>
+							<select class="input h-8 w-28 text-xs" value={u.role} disabled={u.id === data.me.id} onchange={(e) => setRole(u, e.currentTarget.value)}>
+								<option value="member">Member</option>
+								<option value="admin">Admin</option>
+							</select>
+							{#if u.id !== data.me.id}
+								<button class="btn btn-ghost btn-sm" onclick={() => resetPassword(u)}>Reset password</button>
+								<button class="btn btn-ghost btn-icon btn-sm" title="Remove" onclick={() => removePerson(u)}><Trash2 /></button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+
+			<section id="server" class="card scroll-mt-6 p-5">
+				<h2 class="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold"><Server class="size-4 text-primary" />Server</h2>
+				<form class="space-y-3" onsubmit={saveServer}>
+					<div>
+						<label class="label" for="s-url">Public URL</label>
+						<input id="s-url" class="input" bind:value={publicUrl} placeholder="https://coffer.example.com" />
+						<p class="mt-1 text-[0.6875rem] text-muted-foreground">The address one-time links and the CLI installer use. Blank: whatever address the request came in on.</p>
+					</div>
+					<div class="max-w-xs">
+						<label class="label" for="s-hours">One-time links expire after</label>
+						<select id="s-hours" class="input" bind:value={shareHours}>
+							<option value={1}>1 hour</option>
+							<option value={24}>1 day</option>
+							<option value={72}>3 days</option>
+							<option value={168}>7 days</option>
+						</select>
+					</div>
+					<button class="btn btn-primary">Save</button>
+				</form>
+			</section>
+		{/if}
+		<p class="text-center text-[0.6875rem] text-muted-foreground">Coffer {__APP_VERSION__ ?? ''} · signed in {data.me.lastLoginAt ? dateTime(data.me.lastLoginAt) : ''}</p>
+	</div>
 </div>
 
 <Dialog bind:open={tokenOpen} title={newToken ? 'Your new token' : 'New API token'} width="max-w-md">
