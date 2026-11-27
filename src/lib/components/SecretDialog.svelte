@@ -37,6 +37,7 @@
 	let type = $state<SecretType>('text');
 	let value = $state('');
 	let note = $state('');
+	let url = $state('');
 	let folder = $state('/');
 	let env = $state('');
 	let alsoIn = $state<string[]>([]);
@@ -55,6 +56,7 @@
 		type = secret?.type ?? prefill?.type ?? 'text';
 		value = prefill?.value ?? '';
 		note = secret?.note ?? '';
+		url = secret?.url ?? '';
 		folder = secret?.path ?? path;
 		env = secret?.environmentId ?? envId;
 		alsoIn = [];
@@ -84,6 +86,7 @@
 						path: normalizePath(folder),
 						type,
 						note,
+						url,
 						...(value ? { value } : {})
 					})
 				).secret;
@@ -97,6 +100,7 @@
 					type,
 					value,
 					note: note || undefined,
+					url: url || undefined,
 					alsoIn: alsoIn.map((id) => environments.find((x) => x.id === id)!.slug)
 				});
 				saved = res.secrets[0];
@@ -214,6 +218,10 @@
 			</div>
 		{/if}
 
+		<div>
+			<label class="label" for="s-url">URL</label>
+			<input id="s-url" class="input" bind:value={url} maxlength="2000" spellcheck="false" placeholder="https://example.com: the browser extension offers it there" />
+		</div>
 		<div>
 			<label class="label" for="s-note">Note</label>
 			<input id="s-note" class="input" bind:value={note} maxlength="2000" placeholder="What it's for, who owns it, when to rotate" />

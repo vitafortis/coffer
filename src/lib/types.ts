@@ -90,6 +90,8 @@ export type Secret = {
 	key: string;
 	type: SecretType;
 	note: string | null;
+	/** The site it signs in to, if any: the extension offers it there. */
+	url: string | null;
 	meta: SecretMeta;
 	version: number;
 	createdAt: string;

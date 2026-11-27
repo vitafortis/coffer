@@ -1,18 +1,20 @@
 import { DEFAULT_OPTIONS, generatePassword, passwordBits } from './generate.js';
-import { api, fillFocused, getConfig, scheduleClipboardClear } from './shared.js';
+import { api, fillFocused, fillLogin, getConfig, scheduleClipboardClear } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 const TYPE_GLYPH = { text: 'T', password: '•', note: '¶', key: '⚿', certificate: '✓', keypair: '⌘' };
 // Lucide's eye and copy, drawn inline (an extension page can't load the web app's icon set).
 const svg = (d) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const EYE = svg('<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>');
+const FILL = svg('<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>');
 const COPY = svg('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>');
 
 let selected = 0;
 let results = [];
-let saving = null; // { value?, type, key, project?, env?, path? }; no value: the form asks for one
+let saving = null; // { value?, type, key, project?, env?, path?, url? }; no value: the form asks for one
 let projects = [];
 let current = null; // the project open in the Projects tab: { project, env }
+let site = null; // the website the popup was opened on: { tabId, origin, host }
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
@@ -74,6 +76,7 @@ async function showMain() {
 	$('who').textContent = `${cfg.email || 'Connected'} · ${new URL(cfg.url).host}`;
 	chrome.runtime.sendMessage({ target: 'background', type: 'clear-badge' }).catch(() => {});
 	await showLastGenerated();
+	site = await currentSite();
 	loadOptions();
 	$('q').focus();
 	search('');
@@ -126,7 +129,14 @@ $('q').addEventListener('keydown', (e) => {
 
 async function search(q) {
 	try {
-		results = (await api(`/api/v1/search?limit=40&q=${encodeURIComponent(q.trim())}`)).results;
+		// With nothing typed, the secrets for this site come first.
+		const [hits, here] = await Promise.all([
+			api(`/api/v1/search?limit=40&q=${encodeURIComponent(q.trim())}`),
+			!q.trim() && site ? api(`/api/v1/search?host=${encodeURIComponent(site.host)}`) : { results: [] }
+		]);
+		results = [...here.results, ...hits.results.filter((s) => !here.results.some((h) => h.id === s.id))];
+		$('site').hidden = !here.results.length;
+		$('site').textContent = `${here.results.length} for ${site?.host}`;
 		selected = 0;
 		render();
 	} catch (err) {
@@ -159,20 +169,67 @@ function render() {
 	ul.children[selected]?.scrollIntoView({ block: 'nearest' });
 }
 
-/** One secret in a list: click to copy, the eye to show its value. */
+/** One secret in a list: click to copy, the eye to show its value, and fill when it's for this site. */
 function secretRow(s, where) {
 	const li = document.createElement('li');
 	li.title = 'Click to copy';
-	li.innerHTML = `<span class="t"></span><div class="txt"><div class="k"></div><div class="w"></div></div><div class="acts"><button class="icon" data-a="show" title="Show">${EYE}</button><button class="icon" data-a="copy" title="Copy">${COPY}</button></div>`;
-	li.querySelector('.t').textContent = TYPE_GLYPH[s.type] ?? 'T';
+	const fill = onSite(s) && (s.type === 'password' || s.type === 'text') ? `<button class="icon" data-a="fill" title="Fill in page">${FILL}</button>` : '';
+	li.innerHTML = `<span class="t"></span><div class="txt"><div class="k"></div><div class="w"></div></div><div class="acts">${fill}<button class="icon" data-a="show" title="Show">${EYE}</button><button class="icon" data-a="copy" title="Copy">${COPY}</button></div>`;
+	const t = li.querySelector('.t');
+	if (s.url) {
+		// Chrome's own favicon cache: no request leaves the browser, so sites never visited show a globe.
+		const img = new Image(16, 16);
+		img.alt = '';
+		img.src = chrome.runtime.getURL(`/_favicon/?pageUrl=${encodeURIComponent(s.url)}&size=32`);
+		t.append(img);
+		t.classList.add('fav');
+		t.title = hostOf(s.url) ?? '';
+	} else t.textContent = TYPE_GLYPH[s.type] ?? 'T';
 	li.querySelector('.k').textContent = s.key;
 	li.querySelector('.w').textContent = [where, s.note].filter(Boolean).join(' · ');
 	li.addEventListener('click', (e) => {
 		const a = e.target.closest('button')?.dataset.a;
 		if (a === 'show') return reveal(s, li);
+		if (a === 'fill') return fillSecret(s);
 		copySecret(s);
 	});
 	return li;
+}
+
+// ── This site ─────────────────────────────────────────────────────────────────
+
+/** The page the popup was opened on, when it's a website (clicking the toolbar button lends access to it). */
+async function currentSite() {
+	const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	const u = parseUrl(tab?.url);
+	return u && /^https?:$/.test(u.protocol) ? { tabId: tab.id, origin: u.origin, host: u.hostname.replace(/^www\./, '') } : null;
+}
+
+function parseUrl(url) {
+	try {
+		return new URL(url);
+	} catch {
+		return null;
+	}
+}
+
+const hostOf = (url) => parseUrl(url)?.hostname.toLowerCase().replace(/^www\./, '') || null;
+
+/** A secret for this site: its URL is on the page's host or a domain above it, as the server matches. */
+function onSite(s) {
+	const h = site && s.url && hostOf(s.url);
+	return !!h && (site.host === h || site.host.endsWith(`.${h}`));
+}
+
+async function fillSecret(s) {
+	try {
+		const { value } = await api(`/api/v1/secrets/${s.id}/value`);
+		const res = await chrome.scripting.executeScript({ target: { tabId: site.tabId, allFrames: true }, func: fillLogin, args: [value, s.type === 'password'] });
+		if (!res.some((r) => r.result)) return toast('Click into the field to fill, then try again.', true);
+		window.close();
+	} catch (err) {
+		toast(err.message, true);
+	}
 }
 
 async function reveal(s, li) {
@@ -313,7 +370,7 @@ $('g-fill').addEventListener('click', async () => {
 		} catch {}
 		await chrome.storage.session.set({ lastGenerated: { value, host, at: Date.now(), filled: true } });
 		toast('Filled. Save it so you don’t lose it.');
-		openSave({ value, type: 'password', key: keyFor(host) });
+		openSave({ value, type: 'password', key: keyFor(host), url: site?.origin });
 	} catch {
 		toast('This page can’t be filled (browser pages and the web store are off limits).', true);
 	}
@@ -330,7 +387,7 @@ async function showLastGenerated() {
 	$('last').hidden = false;
 	$('last-host').textContent = g.host || 'this page';
 	$('last-filled').textContent = g.filled ? '' : ' (copied: the field couldn’t be filled)';
-	$('last-save').onclick = () => openSave({ value: g.value, type: 'password', key: keyFor(g.host) });
+	$('last-save').onclick = () => openSave({ value: g.value, type: 'password', key: keyFor(g.host), url: g.host ? `https://${g.host}` : undefined });
 	$('last-dismiss').onclick = async () => {
 		await chrome.storage.session.remove('lastGenerated');
 		$('last').hidden = true;
@@ -351,6 +408,8 @@ async function openSave(item) {
 	$('sv-type').value = item.type;
 	$('sv-key').value = item.key || '';
 	$('sv-note').value = '';
+	$('sv-url').value = item.url ?? '';
+	$('sv-url-here').hidden = !site;
 	$('sv-error').textContent = '';
 	try {
 		await loadProjects();
@@ -376,6 +435,7 @@ function fillEnvs(prefer) {
 }
 
 $('sv-project').addEventListener('change', () => fillEnvs());
+$('sv-url-here').addEventListener('click', () => ($('sv-url').value = site.origin));
 $('sv-cancel').addEventListener('click', () => ($('save').hidden = true));
 
 $('save').addEventListener('submit', async (e) => {
@@ -390,7 +450,7 @@ $('save').addEventListener('submit', async (e) => {
 	try {
 		await api(`/api/v1/projects/${encodeURIComponent(project)}/secrets`, {
 			method: 'POST',
-			body: { env, path, key: $('sv-key').value.trim(), type, value, note: $('sv-note').value || undefined }
+			body: { env, path, key: $('sv-key').value.trim(), type, value, note: $('sv-note').value || undefined, url: $('sv-url').value.trim() || undefined }
 		});
 		await chrome.storage.local.set({ lastSave: { project, env, path } });
 		await chrome.storage.session.remove('lastGenerated');

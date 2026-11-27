@@ -117,12 +117,17 @@ What it does:
 
 - **Search and copy**: type to find a secret across projects; **Enter** or a click copies it, and
   the clipboard clears after 30 seconds if it still holds the value.
+- **This site first**: secrets whose URL is on the page you're on (or a domain above it, so
+  `github.com` is offered on `gist.github.com`) are listed first, with **Fill in page**. Secrets with
+  a URL show the site's icon, from the browser's own favicon cache, so no request leaves it.
+- **Projects**: browse a project's secrets by environment, and add new ones with **+**.
 - **Generate into fields**: right-click any field → **Fill with a new password** (it fills a
   matching "confirm password" box too). The popup then offers to save it, named after the site.
   The **Generate** tab has the options, **Fill in page**, **Copy** and **Save to a project**.
 
 It never reads pages or fills existing logins by itself; it only touches a page when you use the
-right-click menu or **Fill in page**.
+right-click menu or **Fill in page**. A password fills the focused field, or the page's first
+password field when nothing is focused.
 
 ## API
 
@@ -135,11 +140,11 @@ cookie or `Authorization: Bearer cof_…`.
 | `GET/PATCH/DELETE /api/v1/projects/:project` | Project (by slug or id), its environments and folders |
 | `POST /api/v1/projects/:project/environments`, `PATCH/DELETE …/:env` | Environments |
 | `GET /api/v1/projects/:project/secrets?env=&path=&deep=1&key=&values=1` | Secrets; values only with `values=1` (logged) |
-| `POST /api/v1/projects/:project/secrets` | `{ env, path, key, type, value, note, alsoIn: [env…], upsert }` |
+| `POST /api/v1/projects/:project/secrets` | `{ env, path, key, type, value, note, url, alsoIn: [env…], upsert }` |
 | `GET/PATCH/DELETE /api/v1/secrets/:id` | One secret; a new `value` makes a new version |
 | `GET /api/v1/secrets/:id/value?version=` | The value (logged) |
 | `GET /api/v1/secrets/:id/versions`, `POST …/restore` | History |
-| `GET /api/v1/search?q=` | Find secrets (no values) |
+| `GET /api/v1/search?q=`, `?host=` | Find secrets (no values); `host` gives the ones whose URL is on that site |
 | `POST /api/v1/generate` | `{ kind: password \| key \| uuid \| keypair \| certificate, … }`; nothing is stored |
 | `GET/POST /api/v1/shares`, `DELETE …/:id` | One-time links: `{ secretId }` or `{ value }`, `hours`, `views`, `label` |
 | `POST /api/v1/shares/open` | `{ id, key }` → the value. Public. |

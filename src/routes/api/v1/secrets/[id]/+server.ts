@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import { actor, body, Conflict, handler, requireWrite, str } from '#lib/server/http.ts';
-import { checkKey, checkPath, checkType, describeValue, MAX_VALUE, refOf, secretOr404 } from '#lib/server/secrets.ts';
+import { checkKey, checkPath, checkType, checkUrl, describeValue, MAX_VALUE, refOf, secretOr404 } from '#lib/server/secrets.ts';
 import { deleteSecret, findSecret, logActivity, readSecretValue, updateSecret } from '#lib/server/store.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = handler(({ params }) => json({ secret: secretOr404(params.id) }));
 
-/** Changes any of key, path, type, note, value. A new value is a new version. */
+/** Changes any of key, path, type, note, url, value. A new value is a new version. */
 export const PATCH: RequestHandler = handler(async ({ params, request, locals }) => {
 	requireWrite(locals);
 	const s = secretOr404(params.id);
@@ -22,7 +22,7 @@ export const PATCH: RequestHandler = handler(async ({ params, request, locals })
 	// Re-read what the value says about itself when either the value or the type changes.
 	const meta = value !== undefined || type !== undefined ? describeValue(type ?? s.type, value ?? readSecretValue(s.id)!) : undefined;
 	const before = refOf(s);
-	const out = updateSecret(s.id, { key, path, type, value, meta, note: b.note !== undefined ? str(b, 'note', { max: 2000 }) : undefined, by: actor(locals) });
+	const out = updateSecret(s.id, { key, path, type, value, meta, note: b.note !== undefined ? str(b, 'note', { max: 2000 }) : undefined, url: b.url !== undefined ? checkUrl(str(b, 'url', { max: 2000 })) : undefined, by: actor(locals) });
 	logActivity('secret.updated', { actor: actor(locals), target: refOf(out), detail: [value !== undefined ? `v${out.version}` : null, refOf(out) !== before ? `was ${before}` : null].filter(Boolean).join(', ') || null });
 	return json({ secret: out });
 });

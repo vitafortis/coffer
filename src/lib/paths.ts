@@ -53,3 +53,20 @@ export const joinPath = (path: string, name: string) => (path === '/' ? `/${name
 export function secretRef(projectSlug: string, envSlug: string, path: string, key: string): string {
 	return `${projectSlug}/${envSlug}${path === '/' ? '' : path}/${key}`;
 }
+
+/**
+ * A sign-in address, tidied: "github.com" becomes https://github.com, and a bare site loses its
+ * trailing slash. Empty is null; undefined when it isn't an http or https address.
+ */
+export function normalizeUrl(raw: string | null | undefined): string | null | undefined {
+	const s = raw?.trim();
+	if (!s) return null;
+	let u: URL;
+	try {
+		u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `https://${s}`);
+	} catch {
+		return undefined;
+	}
+	if (!/^https?:$/.test(u.protocol) || !u.hostname) return undefined;
+	return u.pathname === '/' && !u.search && !u.hash ? u.origin : u.href;
+}

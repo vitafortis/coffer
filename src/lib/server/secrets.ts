@@ -1,4 +1,4 @@
-import { keyError, normalizePath, pathError, secretRef, SLUG_RE } from '#lib/paths.ts';
+import { keyError, normalizePath, normalizeUrl, pathError, secretRef, SLUG_RE } from '#lib/paths.ts';
 import { SECRET_TYPES, type Environment, type Project, type Secret, type SecretMeta, type SecretType } from '#lib/types.ts';
 import { BadRequest, NotFound } from './http.ts';
 import { describeCertificate, describePrivateKey } from './pki.ts';
@@ -48,6 +48,13 @@ export function checkType(type: string | null): SecretType {
 	const t = (type ?? 'text') as SecretType;
 	if (!SECRET_TYPES.some((x) => x.value === t)) throw new BadRequest(`Unknown type "${type}"`);
 	return t;
+}
+
+/** A sign-in address, tidied (see normalizeUrl). Empty clears it. */
+export function checkUrl(raw: string | null | undefined): string | null {
+	const url = normalizeUrl(raw);
+	if (url === undefined) throw new BadRequest('The URL must be an http or https address');
+	return url;
 }
 
 /**

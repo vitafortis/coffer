@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { actor, body, BadRequest, Conflict, handler, list, requireWrite, str } from '#lib/server/http.ts';
-import { checkKey, checkPath, checkType, describeValue, envOr404, MAX_VALUE, projectOr404 } from '#lib/server/secrets.ts';
+import { checkKey, checkPath, checkType, checkUrl, describeValue, envOr404, MAX_VALUE, projectOr404 } from '#lib/server/secrets.ts';
 import { createSecret, findSecret, listSecrets, logActivity, readSecretValue, updateSecret } from '#lib/server/store.ts';
 import { secretRef } from '#lib/paths.ts';
 import type { RequestHandler } from './$types';
@@ -25,7 +25,7 @@ export const GET: RequestHandler = handler(({ params, url, locals }) => {
 });
 
 /**
- * Creates a secret: { env, path, key, type, value, note }. `alsoIn: ["staging", "prod"]` creates
+ * Creates a secret: { env, path, key, type, value, note, url }. `alsoIn: ["staging", "prod"]` creates
  * the same secret in other environments. `upsert: true` sets the value of one that exists
  * (the CLI's `coffer set`).
  */
@@ -39,6 +39,7 @@ export const POST: RequestHandler = handler(async ({ params, request, locals }) 
 	const type = checkType(str(b, 'type'));
 	const value = str(b, 'value', { required: true, max: MAX_VALUE, trim: false })!;
 	const note = str(b, 'note', { max: 2000 });
+	const url = checkUrl(str(b, 'url', { max: 2000 }));
 	const envs = [env, ...list(b, 'alsoIn').map((e) => envOr404(project, e)).filter((e) => e.id !== env.id)];
 	const by = actor(locals);
 
@@ -52,8 +53,8 @@ export const POST: RequestHandler = handler(async ({ params, request, locals }) 
 		const t = prior && b.type === undefined ? prior.type : type;
 		const meta = describeValue(t, value);
 		const s = prior
-			? updateSecret(prior.id, { value, type: t, note: b.note !== undefined ? note : undefined, meta, by })
-			: createSecret({ projectId: project.id, environmentId: e.id, path, key, type: t, value, note, meta, by });
+			? updateSecret(prior.id, { value, type: t, note: b.note !== undefined ? note : undefined, url: b.url !== undefined ? url : undefined, meta, by })
+			: createSecret({ projectId: project.id, environmentId: e.id, path, key, type: t, value, note, url, meta, by });
 		logActivity(prior ? 'secret.updated' : 'secret.created', { actor: by, target: secretRef(project.slug, e.slug, path, key), detail: prior ? `v${s.version}` : type });
 		return s;
 	});

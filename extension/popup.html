@@ -40,6 +40,7 @@
 					<button id="last-dismiss" class="icon" title="Dismiss">×</button>
 				</div>
 				<input id="q" class="search" type="search" placeholder="Find a secret…" autocomplete="off" spellcheck="false" />
+				<p id="site" class="site" hidden></p>
 				<ul id="results" class="results"></ul>
 				<p id="s-empty" class="muted center" hidden></p>
 			</div>
@@ -100,6 +101,8 @@
 					<label class="grow">Environment<select id="sv-env"></select></label>
 				</div>
 				<label>Folder<input id="sv-path" value="/" spellcheck="false" /></label>
+				<label>URL <button type="button" id="sv-url-here" class="link" hidden>use this page</button>
+					<input id="sv-url" placeholder="Optional: offered on this site" spellcheck="false" /></label>
 				<label>Note<input id="sv-note" placeholder="Optional" /></label>
 				<div class="actions">
 					<button type="button" id="sv-cancel" class="btn ghost">Cancel</button>

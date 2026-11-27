@@ -11,7 +11,7 @@ process.env.COFFER_DATA_DIR = dir;
 
 const store = await import('../src/lib/server/store.ts');
 const { makeShare, openShare } = await import('../src/lib/server/shares.ts');
-const { normalizePath, childFolders, keyError, pathError } = await import('../src/lib/paths.ts');
+const { normalizePath, normalizeUrl, childFolders, keyError, pathError } = await import('../src/lib/paths.ts');
 const { generatePassword, passwordBits } = await import('../src/lib/generate.ts');
 
 const raw = () => new DatabaseSync(join(dir, 'coffer.db'));
@@ -128,4 +128,37 @@ test('passwords use every chosen set and nothing else', () => {
 		assert.doesNotMatch(pw, /[^A-Za-z0-9]|[0Oo1lI]/);
 	}
 	assert.equal(passwordBits({ length: 24 }), 155);
+});
+
+test('secrets are found by the site they sign in to', () => {
+	const p = store.createProject({ slug: 'sites', name: 'Sites', description: null });
+	const [dev] = store.listEnvironments(p.id);
+	const add = (key: string, url: string | null) =>
+		store.createSecret({ projectId: p.id, environmentId: dev.id, path: '/', key, type: 'password', value: 'x', note: null, url, meta: {}, by: 'me' });
+	add('GITHUB', 'https://github.com');
+	add('GITLAB_WWW', 'https://www.gitlab.com/users/sign_in');
+	add('APP_ONLY', 'https://app.example.com');
+	add('NO_URL', null);
+
+	const keys = (host: string) => store.secretsForHost(host).map((s) => s.key).sort();
+	assert.deepEqual(keys('github.com'), ['GITHUB']);
+	assert.deepEqual(keys('gist.github.com'), ['GITHUB'], 'a parent domain matches its subdomains');
+	assert.deepEqual(keys('gitlab.com'), ['GITLAB_WWW'], 'www. is ignored on both sides');
+	assert.deepEqual(keys('example.com'), [], 'a subdomain does not match its parent');
+	assert.deepEqual(keys('evilgithub.com'), []);
+	assert.deepEqual(keys('github.com.evil.io'), []);
+
+	const s = store.updateSecret(store.searchSecrets('GITHUB')[0].id, { url: null, by: 'me' });
+	assert.equal(s.url, null);
+	assert.deepEqual(keys('github.com'), []);
+});
+
+test('URLs are checked and tidied', () => {
+	assert.equal(normalizeUrl('github.com'), 'https://github.com');
+	assert.equal(normalizeUrl(' https://GitHub.com/ '), 'https://github.com');
+	assert.equal(normalizeUrl('http://localhost:8080/login?next=1'), 'http://localhost:8080/login?next=1');
+	assert.equal(normalizeUrl(''), null);
+	assert.equal(normalizeUrl('ftp://example.com'), undefined);
+	assert.equal(normalizeUrl('javascript://alert(1)'), undefined);
+	assert.equal(normalizeUrl('https://'), undefined);
 });

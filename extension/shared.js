@@ -58,6 +58,28 @@ export function fillFocused(value) {
 	return true;
 }
 
+/**
+ * Runs in the page: fills a stored secret into the focused field or, for a password, the page's
+ * first visible password field when nothing is focused. Self-contained: it's injected on its own.
+ */
+export function fillLogin(value, passwordFallback) {
+	let el = document.activeElement;
+	while (el && el.shadowRoot && el.shadowRoot.activeElement) el = el.shadowRoot.activeElement;
+	// Focus is inside a frame: that frame fills, not this one.
+	if (el instanceof HTMLIFrameElement) return false;
+	if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) {
+		if (!passwordFallback) return false;
+		el = [...document.querySelectorAll('input[type=password]')].find((x) => x.offsetParent !== null && !x.disabled && !x.readOnly);
+		if (!el) return false;
+	}
+	el.focus();
+	const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+	Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
+	el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: value }));
+	el.dispatchEvent(new Event('change', { bubbles: true }));
+	return true;
+}
+
 /** Clears the clipboard in 30 seconds, from the background (the popup closes long before). */
 export async function scheduleClipboardClear(value) {
 	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));

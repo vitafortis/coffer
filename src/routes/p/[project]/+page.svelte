@@ -73,7 +73,7 @@
 
 	const visible = $derived.by(() => {
 		const q = filter.trim().toLowerCase();
-		return q ? data.secrets.filter((s) => `${s.key} ${s.note ?? ''}`.toLowerCase().includes(q)) : data.secrets;
+		return q ? data.secrets.filter((s) => `${s.key} ${s.note ?? ''} ${s.url ?? ''}`.toLowerCase().includes(q)) : data.secrets;
 	});
 
 	async function toggleReveal(s: Secret) {
@@ -215,7 +215,7 @@
 	async function copyFromEnv(s: Secret, to: Environment) {
 		try {
 			const value = await readValue(s.id);
-			await api.post(`/api/v1/projects/${project.slug}/secrets`, { env: to.slug, path: s.path, key: s.key, type: s.type, note: s.note ?? undefined, value });
+			await api.post(`/api/v1/projects/${project.slug}/secrets`, { env: to.slug, path: s.path, key: s.key, type: s.type, note: s.note ?? undefined, url: s.url ?? undefined, value });
 			toast('success', `Copied ${s.key} to ${to.name}`);
 			invalidateAll();
 		} catch (err) {
@@ -366,7 +366,11 @@
 								{:else}
 									<span class="masked font-mono text-xs">••••••••••••</span>
 								{/if}
-								{#if s.note}<p class="truncate text-[0.6875rem] text-muted-foreground">{s.note}</p>{/if}
+								{#if s.url || s.note}
+									<p class="truncate text-[0.6875rem] text-muted-foreground">
+										{#if s.url}<a href={s.url} target="_blank" rel="noopener noreferrer" class="hover:text-primary hover:underline">{s.url.replace(/^https?:\/\/(www\.)?/, '')}</a>{/if}{s.url && s.note ? ' · ' : ''}{s.note ?? ''}
+									</p>
+								{/if}
 							</div>
 							<div class="flex shrink-0 items-center gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
 								<button class="btn btn-ghost btn-icon btn-sm" title={shown !== undefined ? 'Hide' : 'Show'} onclick={() => toggleReveal(s)}>

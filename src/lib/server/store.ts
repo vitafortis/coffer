@@ -102,6 +102,7 @@ function db(): DatabaseSync {
 			key TEXT NOT NULL,
 			type TEXT NOT NULL DEFAULT 'text',
 			note TEXT,
+			url TEXT,
 			meta TEXT NOT NULL DEFAULT '{}',
 			version INTEGER NOT NULL DEFAULT 1,
 			created_at TEXT NOT NULL,
@@ -144,6 +145,9 @@ function db(): DatabaseSync {
 			detail TEXT
 		);
 	`);
+	// Columns added since the first release.
+	const secretCols = new Set(handle.prepare('PRAGMA table_info(secrets)').all().map((c) => c.name as string));
+	if (!secretCols.has('url')) handle.exec('ALTER TABLE secrets ADD COLUMN url TEXT');
 	return handle;
 }
 
@@ -417,6 +421,7 @@ type SecretRow = {
 	key: string;
 	type: SecretType;
 	note: string | null;
+	url: string | null;
 	meta: string;
 	version: number;
 	created_at: string;
@@ -431,6 +436,7 @@ const toSecret = (r: SecretRow): Secret => ({
 	key: r.key,
 	type: r.type,
 	note: r.note,
+	url: r.url ?? null,
 	meta: JSON.parse(r.meta) as SecretMeta,
 	version: r.version,
 	createdAt: r.created_at,
@@ -493,14 +499,14 @@ export function listSecretVersions(id: string): SecretVersion[] {
 	).map((r) => ({ version: r.version, createdAt: r.created_at, createdBy: r.created_by }));
 }
 
-export type SecretInput = { type: SecretType; note: string | null; meta: SecretMeta; value: string };
+export type SecretInput = { type: SecretType; note: string | null; url?: string | null; meta: SecretMeta; value: string };
 
 export function createSecret(input: SecretInput & { projectId: string; environmentId: string; path: string; key: string; by: string | null }): Secret {
 	const id = randomUUID();
 	const at = now();
 	tx(() => {
 		run(
-			'INSERT INTO secrets (id, project_id, environment_id, path, key, type, note, meta, version, created_at, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)',
+			'INSERT INTO secrets (id, project_id, environment_id, path, key, type, note, url, meta, version, created_at, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)',
 			id,
 			input.projectId,
 			input.environmentId,
@@ -508,6 +514,7 @@ export function createSecret(input: SecretInput & { projectId: string; environme
 			input.key,
 			input.type,
 			input.note,
+			input.url ?? null,
 			JSON.stringify(input.meta),
 			at,
 			at,
@@ -532,6 +539,7 @@ export function updateSecret(id: string, patch: Partial<SecretInput> & { key?: s
 		if (patch.path !== undefined) run('UPDATE secrets SET path = ? WHERE id = ?', patch.path, id);
 		if (patch.type !== undefined) run('UPDATE secrets SET type = ? WHERE id = ?', patch.type, id);
 		if (patch.note !== undefined) run('UPDATE secrets SET note = ? WHERE id = ?', patch.note, id);
+		if (patch.url !== undefined) run('UPDATE secrets SET url = ? WHERE id = ?', patch.url, id);
 		if (patch.meta !== undefined) run('UPDATE secrets SET meta = ? WHERE id = ?', JSON.stringify(patch.meta), id);
 		if (patch.value !== undefined && patch.value !== readSecretValue(id)) {
 			const v = s.version + 1;
@@ -565,9 +573,34 @@ export function searchSecrets(q: string, limit = 50): SecretHit[] {
 	const params: SQLInputValue[] = [];
 	for (const t of terms) {
 		const like = `%${likeEscape(t)}%`;
-		where.push("(s.key LIKE ? ESCAPE '\\' OR s.path LIKE ? ESCAPE '\\' OR IFNULL(s.note, '') LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\' OR p.slug LIKE ? ESCAPE '\\' OR e.slug LIKE ? ESCAPE '\\')");
-		params.push(like, like, like, like, like, like);
+		where.push("(s.key LIKE ? ESCAPE '\\' OR s.path LIKE ? ESCAPE '\\' OR IFNULL(s.note, '') LIKE ? ESCAPE '\\' OR IFNULL(s.url, '') LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\' OR p.slug LIKE ? ESCAPE '\\' OR e.slug LIKE ? ESCAPE '\\')");
+		params.push(like, like, like, like, like, like, like);
 	}
+	return secretHits(where, params, limit);
+}
+
+/** Secrets whose URL is on `host` or a domain above it: example.com is offered on app.example.com. */
+export function secretsForHost(host: string, limit = 50): SecretHit[] {
+	const h = hostOf(`https://${host}`);
+	if (!h) return [];
+	return secretHits(['s.url IS NOT NULL'], [], 10_000)
+		.filter((s) => {
+			const own = hostOf(s.url!);
+			return !!own && (h === own || h.endsWith(`.${own}`));
+		})
+		.slice(0, limit);
+}
+
+/** A URL's host without "www.", or null when it doesn't parse. */
+export function hostOf(url: string): string | null {
+	try {
+		return new URL(url).hostname.toLowerCase().replace(/^www\./, '') || null;
+	} catch {
+		return null;
+	}
+}
+
+function secretHits(where: string[], params: SQLInputValue[], limit: number): SecretHit[] {
 	const rows = all<SecretRow & { p_slug: string; p_name: string; e_slug: string; e_name: string }>(
 		`SELECT s.*, p.slug AS p_slug, p.name AS p_name, e.slug AS e_slug, e.name AS e_name
 		 FROM secrets s JOIN projects p ON p.id = s.project_id JOIN environments e ON e.id = s.environment_id

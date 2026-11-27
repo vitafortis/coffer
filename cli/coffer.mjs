@@ -42,7 +42,7 @@ Secrets
   coffer ls [folder] [--deep]         names, types and versions (no values)
   coffer get <name> [-c] [-v N]       print the value (-c: copy instead, cleared after 30s; -v: old version)
   coffer set <name> [value|-]         store a value: argument, - for stdin, or a hidden prompt
-        [--type text|password|note|key|certificate|keypair] [--note "…"]
+        [--type text|password|note|key|certificate|keypair] [--note "…"] [--url site]
         [--file path]                 read the value from a file (certificates, keys)
   coffer rm <name>                    delete (asks first; -y to skip)
   coffer history <name>               versions and who made them
@@ -66,7 +66,7 @@ Environment: COFFER_URL, COFFER_TOKEN, COFFER_PROJECT, COFFER_ENV override the c
 
 // ── Arguments ─────────────────────────────────────────────────────────────────
 
-const VALUE_FLAGS = new Set(['-p', '--project', '-e', '--env', '--path', '-l', '--length', '--bytes', '--type', '--note', '--file', '--expires', '--views', '--label', '--alg', '--comment', '--cn', '--san', '--days', '--org', '--issuer', '--save', '-v', '--version-of']);
+const VALUE_FLAGS = new Set(['-p', '--project', '-e', '--env', '--path', '-l', '--length', '--bytes', '--type', '--note', '--url', '--file', '--expires', '--views', '--label', '--alg', '--comment', '--cn', '--san', '--days', '--org', '--issuer', '--save', '-v', '--version-of']);
 const ALIASES = { '-p': 'project', '-e': 'env', '-l': 'length', '-c': 'copy', '-y': 'yes', '-v': 'version-of', '-h': 'help', '-q': 'quiet' };
 
 function parseArgs(argv) {
@@ -424,7 +424,8 @@ const commands = {
 			value,
 			upsert: true,
 			...(type ? { type } : {}),
-			...(flags.note !== undefined ? { note: flags.note } : {})
+			...(flags.note !== undefined ? { note: flags.note } : {}),
+			...(flags.url !== undefined ? { url: flags.url } : {})
 		});
 		const s = secrets[0];
 		console.log(`${green('✓')} ${w.key} ${s.version > 1 ? `updated (v${s.version})` : 'stored'} in ${w.project}/${w.env}${w.path === '/' ? '' : w.path}`);
